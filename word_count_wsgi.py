@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cgi
 import json
+import os
 from pathlib import Path
 import time
 from typing import Callable
@@ -16,8 +17,26 @@ from word_count_core import (
 
 
 load_dotenv(get_script_dir() / ".env")
-DEBUG_LOG_PATH = Path("/home/developer/Documents/MyPythonCodes/.cursor/debug-9e73f9.log")
+DEBUG_LOG_PATH = get_script_dir() / "logs" / "debug.log"
 DEBUG_SESSION_ID = "9e73f9"
+API_KEY_HEADER = "HTTP_X_API_KEY"
+
+
+def _dotenv_value(key: str) -> str:
+    env_path = get_script_dir() / ".env"
+    if not env_path.exists():
+        return ""
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        env_key, env_value = line.split("=", 1)
+        if env_key.strip() == key:
+            return env_value.strip().strip("'").strip('"')
+    return ""
+
+
+API_KEY = _dotenv_value("WORDCOUNT_API_KEY") or os.getenv("WORDCOUNT_API_KEY", "change-me")
 
 
 def _agent_log(run_id: str, hypothesis_id: str, location: str, message: str, data: dict) -> None:
@@ -62,6 +81,11 @@ def _json_response(
     ]
     start_response(status, headers)
     return [body]
+
+
+def _is_authorized(environ: dict) -> bool:
+    provided_key = environ.get(API_KEY_HEADER, "")
+    return bool(API_KEY) and provided_key == API_KEY
 
 
 def _handle_upload(environ: dict, start_response: Callable) -> list[bytes]:
@@ -170,6 +194,13 @@ def application(environ: dict, start_response: Callable) -> list[bytes]:
         data={"method": method, "path": path},
     )
     # endregion
+
+    if not _is_authorized(environ):
+        return _json_response(
+            start_response,
+            "401 Unauthorized",
+            {"error": "Unauthorized. Send valid X-API-Key header."},
+        )
 
     if method == "GET" and path == "/health":
         return _json_response(start_response, "200 OK", {"status": "ok"})

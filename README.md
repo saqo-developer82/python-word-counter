@@ -10,7 +10,7 @@ It supports:
 ## API Endpoints
 
 - `GET /health`  
-  Returns service status.
+  Returns service status. Requires `X-API-Key` header.
 
 - `POST /upload`  
   Accepts `multipart/form-data` with a `file` field and returns:
@@ -18,11 +18,22 @@ It supports:
   - save location
   - word count
   - short text preview
+  Also requires `X-API-Key` header.
 
 Example:
 
 ```bash
-curl -i -X POST -F "file=@/path/to/document.pdf" http://wordcount.loc/upload
+curl -i \
+  -H "X-API-Key: your-api-key" \
+  -X POST \
+  -F "file=@/path/to/document.pdf" \
+  http://wordcount.loc/upload
+```
+
+Health check example:
+
+```bash
+curl -i -H "X-API-Key: your-api-key" http://wordcount.loc/health
 ```
 
 ## Project Files
@@ -37,8 +48,16 @@ Optional environment variables:
 - `CLOUD_VISION_API_KEY` - required for image OCR with Google Vision
 - `VISION_ENDPOINT` - override Vision API endpoint
 - `WORDCOUNT_FILES_DIR` - upload storage directory (if not set, app tries project `files/`, then `/tmp/wordcount-files`)
+- `WORDCOUNT_API_KEY` - API key expected in the `X-API-Key` request header
 
 You can place variables in a `.env` file in the project root.
+
+## Logging
+
+Debug logs are written to:
+- `logs/debug.log` (inside the project root)
+
+Logging is best-effort and will not break requests if the log file cannot be written.
 
 ## Local Setup
 
