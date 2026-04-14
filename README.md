@@ -114,6 +114,17 @@ docker compose down
 docker compose up --build -d
 ```
 
+Or use the helper script to pull latest `main` and redeploy in one step:
+
+```bash
+./redeploy.sh
+```
+
+The script runs:
+- `git pull origin main`
+- `docker compose down`
+- `docker compose up --build -d`
+
 ## Apache Reverse Proxy for `wordcount.loc`
 
 If you want to access Docker through `http://wordcount.loc`, configure Apache as a reverse proxy to port `8010`.
