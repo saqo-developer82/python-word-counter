@@ -1,0 +1,7 @@
+requests
+pypdf
+python-docx
+pillow
+pytesseract
+pymupdf
+gunicorn

@@ -1,0 +1,14 @@
+services:
+  wordcount:
+    build: .
+    container_name: wordcount-calculator
+    ports:
+      - "8010:8010"
+    env_file:
+      - .env
+    environment:
+      WORDCOUNT_FILES_DIR: /app/files
+    volumes:
+      - ./files:/app/files
+      - ./logs:/app/logs
+    restart: unless-stopped

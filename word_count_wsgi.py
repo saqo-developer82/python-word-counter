@@ -101,13 +101,7 @@ def _handle_upload(environ: dict, start_response: Callable) -> list[bytes]:
         },
     )
     # endregion
-    content_type = environ.get("CONTENT_TYPE", "")
-    if "multipart/form-data" not in content_type:
-        return _json_response(
-            start_response,
-            "400 Bad Request",
-            {"error": "Content-Type must be multipart/form-data."},
-        )
+    content_type = environ.get("CONTENT_TYPE", "") or environ.get("HTTP_CONTENT_TYPE", "")
 
     try:
         form = cgi.FieldStorage(
@@ -125,14 +119,28 @@ def _handle_upload(environ: dict, start_response: Callable) -> list[bytes]:
             {"error": f"Invalid multipart payload: {exc}"},
         )
 
-    if "file" not in form:
+    try:
+        uploaded = form["file"]
+    except (TypeError, KeyError):
         return _json_response(
             start_response,
             "400 Bad Request",
-            {"error": "Missing form-data field: file"},
+            {
+                "error": "Missing form-data field: file",
+                "received_content_type": content_type,
+                "hint": "Send multipart/form-data with a file field named 'file'.",
+            },
         )
 
-    uploaded = form["file"]
+    # Some clients may send repeated "file" keys; use the first file item.
+    if isinstance(uploaded, list):
+        if not uploaded:
+            return _json_response(
+                start_response,
+                "400 Bad Request",
+                {"error": "Missing form-data field: file"},
+            )
+        uploaded = uploaded[0]
     if not getattr(uploaded, "filename", ""):
         return _json_response(
             start_response,
@@ -183,33 +191,47 @@ def _handle_upload(environ: dict, start_response: Callable) -> list[bytes]:
 
 
 def application(environ: dict, start_response: Callable) -> list[bytes]:
-    method = environ.get("REQUEST_METHOD", "GET").upper()
-    path = environ.get("PATH_INFO", "/")
-    # region agent log
-    _agent_log(
-        run_id="pre-fix",
-        hypothesis_id="H2",
-        location="word_count_wsgi.py:application:entry",
-        message="WSGI request received",
-        data={"method": method, "path": path},
-    )
-    # endregion
+    try:
+        method = environ.get("REQUEST_METHOD", "GET").upper()
+        path = environ.get("PATH_INFO", "/")
+        # region agent log
+        _agent_log(
+            run_id="pre-fix",
+            hypothesis_id="H2",
+            location="word_count_wsgi.py:application:entry",
+            message="WSGI request received",
+            data={"method": method, "path": path},
+        )
+        # endregion
 
-    if not _is_authorized(environ):
+        if not _is_authorized(environ):
+            return _json_response(
+                start_response,
+                "401 Unauthorized",
+                {"error": "Unauthorized. Send valid X-API-Key header."},
+            )
+
+        if method == "GET" and path == "/health":
+            return _json_response(start_response, "200 OK", {"status": "ok"})
+
+        if method == "POST" and path == "/upload":
+            return _handle_upload(environ, start_response)
+
         return _json_response(
             start_response,
-            "401 Unauthorized",
-            {"error": "Unauthorized. Send valid X-API-Key header."},
+            "404 Not Found",
+            {"error": "Use GET /health or POST /upload"},
         )
-
-    if method == "GET" and path == "/health":
-        return _json_response(start_response, "200 OK", {"status": "ok"})
-
-    if method == "POST" and path == "/upload":
-        return _handle_upload(environ, start_response)
-
-    return _json_response(
-        start_response,
-        "404 Not Found",
-        {"error": "Use GET /health or POST /upload"},
-    )
+    except Exception as exc:  # noqa: BLE001
+        _agent_log(
+            run_id="pre-fix",
+            hypothesis_id="H5",
+            location="word_count_wsgi.py:application:exception",
+            message="Unhandled application exception",
+            data={"error": str(exc)},
+        )
+        return _json_response(
+            start_response,
+            "500 Internal Server Error",
+            {"error": f"Unhandled server exception: {exc}"},
+        )

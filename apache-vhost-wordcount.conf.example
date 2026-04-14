@@ -1,21 +1,9 @@
 <VirtualHost *:80>
     ServerName wordcount.loc
     ServerAdmin webmaster@localhost
-
-    # Optional: allow larger uploads (25 MB).
-    LimitRequestBody 26214400
-
-    WSGIDaemonProcess wordcount \
-        user=developer group=developer \
-        python-home=/home/developer/Documents/MyPythonCodes/.venv \
-        python-path=/home/developer/Documents/MyPythonCodes/WordCountCalculator
-    WSGIProcessGroup wordcount
-    WSGIScriptAlias / /home/developer/Documents/MyPythonCodes/WordCountCalculator/word_count_wsgi.py
-
-    <Directory /home/developer/Documents/MyPythonCodes/WordCountCalculator>
-        Require all granted
-    </Directory>
-
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:8010/
+    ProxyPassReverse / http://127.0.0.1:8010/
     ErrorLog ${APACHE_LOG_DIR}/wordcount_error.log
     CustomLog ${APACHE_LOG_DIR}/wordcount_access.log combined
 </VirtualHost>
