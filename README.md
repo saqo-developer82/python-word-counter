@@ -4,7 +4,7 @@ WordCountCalculator is a small Python WSGI service that extracts text from uploa
 
 It supports:
 - Images (`.jpg`, `.jpeg`, `.png`, `.bmp`, `.gif`, `.tif`, `.tiff`, `.webp`) using Google Vision OCR
-- PDF (`.pdf`) using text extraction, with local OCR fallback for scanned PDFs
+- PDF (`.pdf`) using text extraction, with Google Vision OCR fallback for scanned/non-copyable PDFs (and local OCR fallback if needed)
 - Word documents (`.docx`, `.doc`)
 
 ## API Endpoints
@@ -71,7 +71,8 @@ python3 -m venv .venv
 ```
 
 For `.doc` support, install `antiword` or LibreOffice (`soffice`) on your system.
-For OCR of scanned PDFs/images, install Tesseract OCR binaries.
+For OCR of scanned PDFs/images, set `CLOUD_VISION_API_KEY`.  
+Optional local fallback: install Tesseract OCR binaries.
 
 ## Docker
 

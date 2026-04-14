@@ -234,7 +234,15 @@ def extract_text_with_google_vision(path: Path, endpoint: str) -> str:
     if not api_key:
         raise RuntimeError("Set CLOUD_VISION_API_KEY in .env before processing images.")
 
-    encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
+    return extract_text_with_google_vision_content(path.read_bytes(), endpoint)
+
+
+def extract_text_with_google_vision_content(content: bytes, endpoint: str) -> str:
+    api_key = os.getenv("CLOUD_VISION_API_KEY")
+    if not api_key:
+        raise RuntimeError("Set CLOUD_VISION_API_KEY in .env before processing images.")
+
+    encoded = base64.b64encode(content).decode("utf-8")
     payload = {
         "requests": [
             {
@@ -262,6 +270,23 @@ def extract_text_with_google_vision(path: Path, endpoint: str) -> str:
     return annotation.get("text", "")
 
 
+def extract_text_from_pdf_google_vision(path: Path, endpoint: str) -> str:
+    if fitz is None:
+        raise RuntimeError(
+            "Scanned PDF Vision OCR requires PyMuPDF (fitz) to render pages."
+        )
+
+    page_texts: list[str] = []
+    with fitz.open(str(path)) as document:
+        for page in document:
+            # Render page to image so each page can be OCR'd by Vision API.
+            pix = page.get_pixmap(dpi=300)
+            page_text = extract_text_with_google_vision_content(pix.tobytes("png"), endpoint)
+            if page_text.strip():
+                page_texts.append(page_text)
+    return "\n".join(page_texts)
+
+
 def process_file(path: Path, vision_endpoint: str) -> tuple[str, int]:
     suffix = path.suffix.lower()
     if suffix in IMAGE_SUFFIXES:
@@ -269,7 +294,10 @@ def process_file(path: Path, vision_endpoint: str) -> tuple[str, int]:
     elif suffix in PDF_SUFFIXES:
         text = extract_text_from_pdf(path)
         if not text.strip():
-            text = extract_text_from_pdf_local_ocr(path)
+            try:
+                text = extract_text_from_pdf_google_vision(path, vision_endpoint)
+            except RuntimeError:
+                text = extract_text_from_pdf_local_ocr(path)
     elif suffix in DOCX_SUFFIXES:
         text = extract_text_from_docx(path)
     elif suffix in DOC_SUFFIXES:
