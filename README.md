@@ -46,7 +46,6 @@ curl -i -H "X-API-Key: your-api-key" http://wordcount.loc/health
 
 Optional environment variables:
 - `CLOUD_VISION_API_KEY` - required for image OCR with Google Vision
-- `VISION_ENDPOINT` - override Vision API endpoint
 - `WORDCOUNT_FILES_DIR` - upload storage directory (if not set, app tries project `files/`, then `/tmp/wordcount-files`)
 - `WORDCOUNT_API_KEY` - API key expected in the `X-API-Key` request header
 
