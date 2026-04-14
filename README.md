@@ -66,7 +66,7 @@ python3 -m venv .venv
 .venv/bin/pip install requests pypdf python-docx pillow pytesseract pymupdf
 ```
 
-For `.doc` support, install `antiword` on your system.
+For `.doc` support, install `antiword` or LibreOffice (`soffice`) on your system.
 For OCR of scanned PDFs/images, install Tesseract OCR binaries.
 
 ## Apache (mod_wsgi) Notes

@@ -178,20 +178,55 @@ def extract_text_from_docx(path: Path) -> str:
 
 
 def extract_text_from_doc(path: Path) -> str:
-    cmd = ["antiword", str(path)]
+    antiword_cmd = ["antiword", str(path)]
     try:
         result = subprocess.run(
-            cmd,
+            antiword_cmd,
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
         )
-    except FileNotFoundError as exc:
-        raise RuntimeError("Legacy .doc requires antiword. Install it and retry.") from exc
+        return result.stdout
+    except FileNotFoundError:
+        pass
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(exc.stderr.strip() or "Failed to parse .doc file.") from exc
-    return result.stdout
+
+    # Fallback path when antiword is unavailable.
+    # LibreOffice can convert legacy .doc to plain text in headless mode.
+    with tempfile.TemporaryDirectory(prefix="wordcount-doc-") as tmp_dir:
+        output_dir = Path(tmp_dir)
+        cmd = [
+            "soffice",
+            "--headless",
+            "--convert-to",
+            "txt:Text",
+            "--outdir",
+            str(output_dir),
+            str(path),
+        ]
+        try:
+            subprocess.run(
+                cmd,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "Legacy .doc requires antiword or LibreOffice (soffice). Install one and retry."
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                exc.stderr.strip() or "Failed to convert .doc file with LibreOffice."
+            ) from exc
+
+        converted = output_dir / f"{path.stem}.txt"
+        if not converted.exists():
+            raise RuntimeError("LibreOffice conversion did not produce a text output file.")
+        return converted.read_text(encoding="utf-8", errors="ignore")
 
 
 def extract_text_with_google_vision(path: Path, endpoint: str) -> str:
