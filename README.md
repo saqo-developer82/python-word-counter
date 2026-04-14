@@ -120,10 +120,16 @@ Or use the helper script to pull latest `main` and redeploy in one step:
 ./redeploy.sh
 ```
 
-The script runs:
+Default behavior:
 - `git pull origin main`
 - `docker compose down`
 - `docker compose up --build -d`
+
+If you want to skip `git pull` and only restart/rebuild Docker:
+
+```bash
+./redeploy.sh --no-pull
+```
 
 ## Apache Reverse Proxy for `wordcount.loc`
 

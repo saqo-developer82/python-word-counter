@@ -182,10 +182,7 @@ def _handle_upload(environ: dict, start_response: Callable) -> list[bytes]:
         start_response,
         "200 OK",
         {
-            "file_name": safe_name,
-            "saved_to": str(destination),
             "word_count": words,
-            "preview": preview,
         },
     )
 
